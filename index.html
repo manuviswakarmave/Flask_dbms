@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            text-align: center;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px;
+        }
+        button {
+            background-color: green;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: darkgreen;
+        }
+        #popup {
+            display: none;
+            padding: 10px;
+            color: white;
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 5px;
+        }
+        .success {
+            background-color: green;
+        }
+        .error {
+            background-color: red;
+        }
+        table {
+            width: 60%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            display: none; /* Hide table initially */
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 10px;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>User Management</h2>
+
+    <!-- Add User Form -->
+    <form id="user-form">
+        <input type="text" id="name" placeholder="Enter Name" required>
+        <input type="email" id="email" placeholder="Enter Email" required>
+        <button type="submit">Add User</button>
+    </form>
+
+    <!-- Edit User Form -->
+    <h2>Edit User</h2>
+    <form id="edit-form">
+        <input type="number" id="edit-id" placeholder="Enter User ID" required>
+        <input type="text" id="edit-name" placeholder="Enter New Name" required>
+        <input type="email" id="edit-email" placeholder="Enter New Email" required>
+        <button type="submit">Edit User</button>
+    </form>
+
+    <!-- Delete User Form -->
+    <h2>Delete User</h2>
+    <form id="delete-form">
+        <input type="number" id="delete-id" placeholder="Enter User ID" required>
+        <button type="submit" style="background-color: red;">Delete User</button>
+    </form>
+
+    <h2>Show All Users</h2>
+    <button id="show-users">Show All Users</button>
+
+    <div id="popup"></div>
+
+    <!-- Users Table (Initially Hidden) -->
+    <h2 id="users-title" style="display: none;">Registered Users</h2>
+    <table id="users-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+            </tr>
+        </thead>
+        <tbody id="users-body">
+        </tbody>
+    </table>
+
+    <script>
+        // Add User API Call
+        document.getElementById("user-form").addEventListener("submit", function (event) {
+            event.preventDefault();
+
+            const name = document.getElementById("name").value;
+            const email = document.getElementById("email").value;
+
+            fetch("http://127.0.0.1:5000/users", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ name: name, email: email })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message === "User added!") {
+                    showPopup("User added successfully!", "success");
+                    document.getElementById("user-form").reset();
+                } else {
+                    showPopup("Operation failed!", "error");
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                showPopup("Operation failed!", "error");
+            });
+        });
+
+        // Edit User API Call
+        document.getElementById("edit-form").addEventListener("submit", function (event) {
+            event.preventDefault();
+
+            const userId = document.getElementById("edit-id").value;
+            const name = document.getElementById("edit-name").value;
+            const email = document.getElementById("edit-email").value;
+
+            fetch(`http://127.0.0.1:5000/users/${userId}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ name: name, email: email })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message === "User updated!") {
+                    showPopup("User updated successfully!", "success");
+                    document.getElementById("edit-form").reset();
+                } else {
+                    showPopup("User not found!", "error");
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                showPopup("Operation failed!", "error");
+            });
+        });
+
+        // Delete User API Call
+        document.getElementById("delete-form").addEventListener("submit", function (event) {
+            event.preventDefault();
+
+            const userId = document.getElementById("delete-id").value;
+
+            fetch(`http://127.0.0.1:5000/users/${userId}`, {
+                method: "DELETE"
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message === "User deleted!") {
+                    showPopup("User deleted successfully!", "success");
+                    document.getElementById("delete-form").reset();
+                } else {
+                    showPopup("User not found!", "error");
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                showPopup("Operation failed!", "error");
+            });
+        });
+
+        // Show All Users API Call
+        document.getElementById("show-users").addEventListener("click", function () {
+            fetch("http://127.0.0.1:5000/users")
+            .then(response => response.json())
+            .then(data => {
+                const usersTable = document.getElementById("users-table");
+                const usersBody = document.getElementById("users-body");
+                const usersTitle = document.getElementById("users-title");
+
+                usersBody.innerHTML = "";
+
+                if (data.length > 0) {
+                    data.forEach(user => {
+                        const row = document.createElement("tr");
+                        row.innerHTML = `<td>${user.id}</td><td>${user.name}</td><td>${user.email}</td>`;
+                        usersBody.appendChild(row);
+                    });
+
+                    usersTable.style.display = "table";
+                    usersTitle.style.display = "block";
+                } else {
+                    usersTable.style.display = "none";
+                    usersTitle.style.display = "none";
+                    showPopup("No users found!", "error");
+                }
+            })
+            .catch(error => {
+                console.error("Error fetching users:", error);
+                showPopup("Failed to fetch users!", "error");
+            });
+        });
+
+        function showPopup(message, type) {
+            const popup = document.getElementById("popup");
+            popup.innerText = message;
+            popup.className = type;
+            popup.style.display = "block";
+            setTimeout(() => {
+                popup.style.display = "none";
+            }, 3000);
+        }
+    </script>
+
+</body>
+</html>
