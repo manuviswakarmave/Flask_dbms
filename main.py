@@ -1,8 +1,10 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, make_response, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_restx import Api, Resource, fields
+from flask_cors import CORS  # Import CORS
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 # Database Configuration
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///users.db"
@@ -10,7 +12,7 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
 # Initialize API
-api = Api(app, title="DBMS CRUD API", description="A simple Flask API with to perform CRUD Operations")
+api = Api(app, title="DBMS CRUD API", description="A simple Flask API for CRUD Operations")
 
 # Define User Model
 class User(db.Model):
@@ -31,15 +33,20 @@ user_model = api.model(
     },
 )
 
+# Serve HTML Page
+@app.route("/")
+def index():
+    return render_template("index.html")
+
 # API Routes
 @api.route("/users")
 class UserList(Resource):
-    @api.doc("Get all users")
     def get(self):
         users = User.query.all()
-        return [{"id": user.id, "name": user.name, "email": user.email} for user in users]
+        response = make_response(jsonify([{"id": user.id, "name": user.name, "email": user.email} for user in users]))
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        return response
 
-    @api.doc("Add a new user")
     @api.expect(user_model)
     def post(self):
         data = request.json
@@ -50,8 +57,6 @@ class UserList(Resource):
 
 @api.route("/users/<int:user_id>")
 class UserDetail(Resource):
-    @api.doc("Update user")
-    @api.expect(user_model)
     def put(self, user_id):
         user = User.query.get(user_id)
         if not user:
@@ -62,7 +67,6 @@ class UserDetail(Resource):
         db.session.commit()
         return {"message": "User updated!"}
 
-    @api.doc("Delete user")
     def delete(self, user_id):
         user = User.query.get(user_id)
         if not user:
